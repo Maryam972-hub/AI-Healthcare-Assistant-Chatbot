@@ -1,4 +1,4 @@
-# app.py — Streamlit Cloud–ready, safe version
+# app.py — Streamlit Cloud–ready, safe version (Brevo SMTP)
 
 import os
 import html
@@ -37,8 +37,18 @@ def get_secret(name: str, required: bool = False, default: str | None = None) ->
 # Not strictly required to render the app; features will be disabled if missing.
 GROQ_API_KEY = get_secret("GROQ_API_KEY", required=False)
 GEOAPIFY_KEY = get_secret("GEOAPIFY_KEY", required=False)
-GMAIL_ADDRESS = get_secret("GMAIL_ADDRESS", required=False)
-GMAIL_APP_PASSWORD = get_secret("GMAIL_APP_PASSWORD", required=False)
+
+# -------------------- Brevo SMTP Secrets -------------------- #
+BREVO_SMTP_HOST = get_secret("BREVO_SMTP_HOST", required=False) or "smtp-relay.brevo.com"
+BREVO_SMTP_PORT = int(get_secret("BREVO_SMTP_PORT", required=False) or 587)
+BREVO_SMTP_LOGIN = get_secret("BREVO_SMTP_LOGIN", required=False)  # e.g. 9388b3001@smtp-brevo.com
+BREVO_SMTP_PASSWORD = get_secret("BREVO_SMTP_PASSWORD", required=False)
+
+# Optional: preferred From / Reply-To (use verified address if available)
+BREVO_FROM_EMAIL = get_secret("BREVO_FROM_EMAIL", required=False) or BREVO_SMTP_LOGIN
+BREVO_FROM_NAME = get_secret("BREVO_FROM_NAME", required=False) or "HealthCare AI Assistant"
+BREVO_REPLY_TO_EMAIL = get_secret("BREVO_REPLY_TO_EMAIL", required=False)
+BREVO_REPLY_TO_NAME = get_secret("BREVO_REPLY_TO_NAME", required=False)
 
 # -------------------- Theme State -------------------- #
 if "theme" not in st.session_state:
@@ -218,27 +228,30 @@ if st.session_state.get("pdf_generated", False):
     except Exception as e:
         st.error(f"Could not open generated PDF: {e}")
 
-    # Email sending (optional)
+    # -------------------- Email sending (optional) — Brevo SMTP -------------------- #
     st.markdown("---")
     st.subheader("📧 Send the PDF to your email (optional)")
     email = st.text_input("Recipient email", placeholder="you@example.com")
 
     EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-    can_send_email = bool(GMAIL_ADDRESS and GMAIL_APP_PASSWORD)
+    # Check SMTP config presence
+    can_send_email = bool(BREVO_SMTP_HOST and BREVO_SMTP_PORT and BREVO_SMTP_LOGIN and BREVO_SMTP_PASSWORD)
     if not can_send_email:
-        st.info("Email sending is not configured. Add **GMAIL_ADDRESS** and **GMAIL_APP_PASSWORD** to Secrets to enable.")
+        st.info("Email sending is not configured. Add **BREVO_SMTP_HOST**, **BREVO_SMTP_PORT**, "
+                "**BREVO_SMTP_LOGIN**, and **BREVO_SMTP_PASSWORD** to Secrets to enable.")
 
     if st.button("📤 Send PDF to Email"):
         if not EMAIL_RE.match(email or ""):
             st.warning("Please enter a valid email address.")
         elif not can_send_email:
-            st.error("Email sending not configured. Set Gmail secrets first.")
+            st.error("Email sending not configured. Set Brevo SMTP secrets first.")
         else:
             try:
                 with open(st.session_state.pdf_path, 'rb') as f:
                     pdf_binary_data = f.read()
 
+                # Build MIME email
                 from email.mime.multipart import MIMEMultipart
                 from email.mime.text import MIMEText
                 from email.mime.base import MIMEBase
@@ -246,9 +259,17 @@ if st.session_state.get("pdf_generated", False):
                 import smtplib
 
                 msg = MIMEMultipart()
-                msg['From'] = GMAIL_ADDRESS
+                msg['From'] = f"{BREVO_FROM_NAME} <{BREVO_FROM_EMAIL}>"
                 msg['To'] = email.strip()
                 msg['Subject'] = "Your Healthcare Report"
+
+                # Optional Reply-To header
+                if BREVO_REPLY_TO_EMAIL:
+                    if BREVO_REPLY_TO_NAME:
+                        msg.add_header('Reply-To', f"{BREVO_REPLY_TO_NAME} <{BREVO_REPLY_TO_EMAIL}>")
+                    else:
+                        msg.add_header('Reply-To', BREVO_REPLY_TO_EMAIL)
+
                 msg.attach(MIMEText("Attached is your AI-generated healthcare report.", 'plain'))
 
                 part = MIMEBase('application', 'octet-stream')
@@ -257,13 +278,19 @@ if st.session_state.get("pdf_generated", False):
                 part.add_header('Content-Disposition', 'attachment; filename=healthcare_report.pdf')
                 msg.attach(part)
 
-                with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=30) as server:
-                    server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-                    server.sendmail(GMAIL_ADDRESS, email.strip(), msg.as_string())
+                # Send via Brevo SMTP (TLS on 587)
+                with smtplib.SMTP(BREVO_SMTP_HOST, BREVO_SMTP_PORT, timeout=30) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(BREVO_SMTP_LOGIN, BREVO_SMTP_PASSWORD)
+                    server.sendmail(BREVO_FROM_EMAIL or BREVO_SMTP_LOGIN, email.strip(), msg.as_string())
 
-                st.success(f"✅ PDF sent to {email.strip()} successfully!")
+                st.success(f"✅ PDF sent to {email.strip()} successfully via Brevo SMTP!")
+            except FileNotFoundError:
+                st.error("❌ PDF file not found. Please generate the PDF first.")
             except Exception as e:
-                st.error(f"❌ Failed to send email: {e}")
+                st.error(f"❌ Failed to send email via Brevo SMTP: {e}")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
