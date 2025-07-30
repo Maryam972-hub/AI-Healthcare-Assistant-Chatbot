@@ -171,8 +171,8 @@ class PDF(FPDF):
         super().__init__()
         self.add_page()
         # Make sure DejaVuSans.ttf is in repo root
-        self.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
-        self.set_font("DejaVu", size=12)
+        self.add_font("FreeSerif", "", "FreeSerif.ttf", uni=True)
+        self.set_font("FreeSerif", size=12)
 
     def add_unicode_text(self, text: str):
         self.multi_cell(0, 8, text)
