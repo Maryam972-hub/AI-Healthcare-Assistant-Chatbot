@@ -230,7 +230,7 @@ if st.session_state.get("pdf_generated", False):
 
     # -------------------- Email sending (optional) — Brevo SMTP -------------------- #
     st.markdown("---")
-    st.subheader("📧 Send the PDF to your email (optional)")
+    st.subheader("📧 Send the PDF to your email")
     email = st.text_input("Recipient email", placeholder="you@example.com")
 
     EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -298,7 +298,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 st.markdown(f"<div style='background-color:{card_color}; color:{text_color}; padding:1.5rem; border-radius:15px; margin-top:30px;'>",
             unsafe_allow_html=True)
 
-st.subheader("🏥 Find Nearby Hospitals (Optional)")
+st.subheader("🏥 Find Nearby Hospitals")
 
 if not GEOAPIFY_KEY:
     st.info("Hospital search is disabled. Add **GEOAPIFY_KEY** to Secrets to enable.")
