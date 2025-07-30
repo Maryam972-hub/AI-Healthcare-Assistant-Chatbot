@@ -1,0 +1,8 @@
+streamlit>=1.38.0
+pillow>=10.4.0
+requests>=2.32.3
+pandas>=2.2.3
+fpdf2>=2.7.10
+gtts>=2.5.3
+groq>=0.11.0
+python-dotenv>=1.0.1
