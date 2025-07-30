@@ -286,11 +286,11 @@ if st.session_state.get("pdf_generated", False):
                     server.login(BREVO_SMTP_LOGIN, BREVO_SMTP_PASSWORD)
                     server.sendmail(BREVO_FROM_EMAIL or BREVO_SMTP_LOGIN, email.strip(), msg.as_string())
 
-                st.success(f"✅ PDF sent to {email.strip()} successfully via Brevo SMTP!")
+                st.success(f"✅ PDF sent to {email.strip()} successfully!")
             except FileNotFoundError:
                 st.error("❌ PDF file not found. Please generate the PDF first.")
             except Exception as e:
-                st.error(f"❌ Failed to send email via Brevo SMTP: {e}")
+                st.error(f"❌ Failed to send email: {e}")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
